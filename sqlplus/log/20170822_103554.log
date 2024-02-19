@@ -1,0 +1,864 @@
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  create table tab_redefine (
+  2      tid     number(10)
+  3    , cdate   date
+  4    , udate   date
+  5    , status  number(2)
+  6    , flg     char(1)
+  7* )
+SQL> /
+
+Table created.
+
+Elapsed: 00:00:00.03
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1* create unique index idxp_redefie on tab_redefine( tid )
+SQL> /
+
+Index created.
+
+Elapsed: 00:00:00.02
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1* alter table tab_redefine add constraints idxp_redefine primary key( tid )
+SQL> /
+
+Table altered.
+
+Elapsed: 00:00:00.10
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  declare
+  2    cnt number(10);
+  3  begin
+  4    cnt := 0;
+  5    for i in 1..10000 loop
+  6      insert into tab_redefine values( i
+  7                                     , sysdate
+  8                                     , sysdate
+  9                                     , mod( i, 10 )
+ 10                                     , mod( trunc( dbms_random.value*10 ), 2 )
+ 11                                     );
+ 12      cnt := cnt + 1;
+ 13      if mod( cnt, 100 ) = 0 then
+ 14        commit;
+ 15      end if;
+ 16    end loop;
+ 17    commit;
+ 18* end;
+SQL> /
+
+PL/SQL procedure successfully completed.
+
+Elapsed: 00:00:00.70
+SQL> 
+SQL> select count(*) from tab_redefine;
+
+  COUNT(*)
+----------
+     10000
+
+1 row selected.
+
+Elapsed: 00:00:00.01
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1* create index idx1_redefine on tab_redefine( status )
+SQL> /
+
+Index created.
+
+Elapsed: 00:00:00.02
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  begin
+  2      dbms_stats.gather_table_stats (
+  3          ownname => 'TEST01'
+  4        , tabname => 'TAB_REDEFINE'
+  5        , cascade => true
+  6      );
+  7* end;
+SQL> /
+
+PL/SQL procedure successfully completed.
+
+Elapsed: 00:00:01.52
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  create materialized view log on tab_redefine
+  2  with primary key
+  3* including new values
+SQL> /
+
+Materialized view log created.
+
+Elapsed: 00:00:00.08
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  create materialized view mv_redefine (
+  2      tid
+  3    , cdate
+  4    , udate
+  5    , status
+  6    , flg
+  7    , cno
+  8  )
+  9    using no index
+ 10    refresh fast
+ 11    with primary key
+ 12    as select tid
+ 13            , cdate
+ 14            , udate
+ 15            , status
+ 16            , flg
+ 17            , mod( tid, 100 )
+ 18*       from tab_redefine
+SQL> /
+
+Materialized view created.
+
+Elapsed: 00:00:00.39
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  select log_owner
+  2       , master
+  3       , log_table
+  4       , object_id
+  5       , last_purge_date
+  6       , last_purge_status
+  7       , num_rows_purged
+  8*   from user_mview_logs
+SQL> /
+
+LOG_OWNER        MASTER       LOG_TABLE                      OBJECT_ID    LAST_PURGE_DATE     LAST_PURGE_STATUS NUM_ROWS_PURGED
+---------------- ------------ ------------------------------ ------------ ------------------- ----------------- ---------------
+TEST01           TAB_REDEFINE MLOG$_TAB_REDEFINE             NO           2017/08/22 10:47:27                 0               0
+
+1 row selected.
+
+Elapsed: 00:00:00.01
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  select owner
+  2       , mview_name
+  3       , last_refresh_type
+  4       , last_refresh_date
+  5       , compile_state
+  6       , staleness
+  7       , after_fast_refresh
+  8*   from user_mviews
+SQL> /
+
+OWNER                MVIEW_NAME           LAST_REFRESH_TYPE    LAST_REFRESH_DATE   COMPILE_STATE       STALENESS           AFTER_FAST_REFRESH
+-------------------- -------------------- -------------------- ------------------- ------------------- ------------------- -------------------
+TEST01               MV_REDEFINE          COMPLETE             2017/08/22 10:47:27 VALID               FRESH               FRESH
+
+1 row selected.
+
+Elapsed: 00:00:00.04
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  select object_type
+  2       , object_id
+  3       , object_name
+  4       , created
+  5       , last_ddl_time
+  6       , status
+  7    from user_objects
+  8*  order by 1, 2
+SQL> /
+
+OBJECT_TYPE               OBJECT_ID OBJECT_NAME                    CREATED             LAST_DDL_TIME       STATUS
+----------------------- ----------- ------------------------------ ------------------- ------------------- -------
+INDEX                         92822 IDXP_REDEFIE                   2017/08/22 10:38:52 2017/08/22 10:38:52 VALID
+INDEX                         92823 IDX1_REDEFINE                  2017/08/22 10:44:37 2017/08/22 10:44:37 VALID
+INDEX                         92829 I_MLOG$_TAB_REDEFINE           2017/08/22 10:46:20 2017/08/22 10:46:20 VALID
+MATERIALIZED VIEW             92831 MV_REDEFINE                    2017/08/22 10:47:27 2017/08/22 10:47:27 VALID
+TABLE                         92821 TAB_REDEFINE                   2017/08/22 10:36:50 2017/08/22 10:46:20 VALID
+TABLE                         92827 MLOG$_TAB_REDEFINE             2017/08/22 10:46:20 2017/08/22 10:46:20 VALID
+TABLE                         92828 RUPD$_TAB_REDEFINE             2017/08/22 10:46:20 2017/08/22 10:46:20 VALID
+TABLE                         92830 MV_REDEFINE                    2017/08/22 10:47:27 2017/08/22 10:47:27 VALID
+
+8 rows selected.
+
+Elapsed: 00:00:00.03
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  begin
+  2  dbms_redefinition.can_redef_table( 'TEST01', 'TAB_REDEFINE', DBMS_REDEFINITION.CONS_USE_PK, null );
+  3* end;
+SQL> /
+
+PL/SQL procedure successfully completed.
+
+Elapsed: 00:00:00.04
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  create table tab_redefine_new
+  2  partition by list ( status )
+  3  (
+  4      partition p000 values( 0 )
+  5    , partition p001 values( 1 )
+  6    , partition pdef values( default )
+  7  )
+  8  enable row movement
+  9* as select * from tab_redefine where 1 = 2
+SQL> /
+
+Table created.
+
+Elapsed: 00:00:00.04
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1* create unique index idxp_redefine_new on tab_redefine_new( tid )
+SQL> /
+
+Index created.
+
+Elapsed: 00:00:00.02
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1* alter table tab_redefine_new add constraints idxp_redefine_new primary key( tid )
+SQL> /
+
+Table altered.
+
+Elapsed: 00:00:00.03
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1* create index idx1_redefine_new on tab_redefine_new( status ) local
+SQL> /
+
+Index created.
+
+Elapsed: 00:00:00.09
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  create materialized view log on tab_redefine_new
+  2  with primary key
+  3* including new values
+SQL> /
+
+Materialized view log created.
+
+Elapsed: 00:00:00.05
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  begin
+  2      dbms_redefinition.start_redef_table (
+  3          uname        => 'TEST01'
+  4        , orig_table   => 'TAB_REDEFINE'
+  5        , int_table    => 'TAB_REDEFINE_NEW'
+  6        , col_mapping  => NULL
+  7        , options_flag => DBMS_REDEFINITION.CONS_USE_PK
+  8        , part_name    => NULL
+  9      );
+ 10* end;
+SQL> /
+
+PL/SQL procedure successfully completed.
+
+Elapsed: 00:00:03.22
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  begin
+  2  dbms_redefinition.register_dependent_object(
+  3      uname         => 'TEST01',
+  4      orig_table    => 'TAB_REDEFINE',
+  5      int_table     => 'TAB_REDEFINE_NEW',
+  6      dep_type      => DBMS_REDEFINITION.CONS_MVLOG,
+  7      dep_owner     => 'TEST01',
+  8      dep_orig_name => 'MLOG$_TAB_REDEFINE',
+  9      dep_int_name  => 'MLOG$_TAB_REDEFINE_NEW'
+ 10  );
+ 11* END;
+SQL> /
+
+PL/SQL procedure successfully completed.
+
+Elapsed: 00:00:00.02
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  declare
+  2      num_errors PLS_INTEGER;
+  3  begin
+  4      dbms_redefinition.copy_table_dependents (
+  5          uname            => 'TEST01'
+  6        , orig_table       => 'TAB_REDEFINE'
+  7        , int_table        => 'TAB_REDEFINE_NEW'
+  8        , copy_indexes     => DBMS_REDEFINITION.CONS_ORIG_PARAMS
+  9        , copy_triggers    => TRUE
+ 10        , copy_constraints => TRUE
+ 11        , copy_privileges  => TRUE
+ 12        , ignore_errors    => TRUE
+ 13        , num_errors       => num_errors
+ 14        , copy_statistics  => TRUE
+ 15        , copy_mvlog       => TRUE
+ 16      );
+ 17* end;
+SQL> /
+
+PL/SQL procedure successfully completed.
+
+Elapsed: 00:00:07.23
+SQL> 
+SQL> 
+SQL> set long 1000
+SQL> ed
+Wrote file afiedt.buf
+
+  1  select object_type
+  2       , object_owner
+  3       , object_name
+  4       , base_table_owner
+  5       , base_table_name
+  6       , ddl_txt
+  7*   from dba_redefinition_errors
+SQL> /
+
+OBJECT_TYPE  OBJECT_OWNER         OBJECT_NAME                    BASE_TABLE_OWNER     BASE_TABLE_NAME      DDL_TXT
+------------ -------------------- ------------------------------ -------------------- -------------------- --------------------------------------------------------------------------------
+INDEX        TEST01               IDXP_REDEFIE                   TEST01               TAB_REDEFINE         CREATE UNIQUE INDEX "TEST01"."TMP$$_IDXP_REDEFIE0" ON "TEST01"."TAB_REDEFINE_NEW
+                                                                                                           " ("TID")
+                                                                                                             PCTFREE 10 INITRANS 2 MAXTRANS 255 COMPUTE STATISTICS
+                                                                                                             STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+                                                                                                             PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1
+                                                                                                             BUFFER_POOL DEFAULT FLASH_CACHE DEFAULT CELL_FLASH_CACHE DEFAULT)
+                                                                                                             TABLESPACE "USERS"
+
+INDEX        TEST01               IDX1_REDEFINE                  TEST01               TAB_REDEFINE         CREATE INDEX "TEST01"."TMP$$_IDX1_REDEFINE0" ON "TEST01"."TAB_REDEFINE_NEW" ("ST
+                                                                                                           ATUS")
+                                                                                                             PCTFREE 10 INITRANS 2 MAXTRANS 255 COMPUTE STATISTICS
+                                                                                                             STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+                                                                                                             PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1
+                                                                                                             BUFFER_POOL DEFAULT FLASH_CACHE DEFAULT CELL_FLASH_CACHE DEFAULT)
+                                                                                                             TABLESPACE "USERS"
+
+CONSTRAINT   TEST01               IDXP_REDEFINE                  TEST01               TAB_REDEFINE         ALTER TABLE "TEST01"."TAB_REDEFINE_NEW" ADD CONSTRAINT "TMP$$_IDXP_REDEFINE0" PR
+                                                                                                           IMARY KEY ("TID")
+                                                                                                             USING INDEX PCTFREE 10 INITRANS 2 MAXTRANS 255
+                                                                                                             STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+                                                                                                             PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1
+                                                                                                             BUFFER_POOL DEFAULT FLASH_CACHE DEFAULT CELL_FLASH_CACHE DEFAULT)
+                                                                                                             TABLESPACE "USERS"  ENABLE NOVALIDATE
+
+
+3 rows selected.
+
+Elapsed: 00:00:00.01
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  begin
+  2      dbms_redefinition.sync_interim_table (
+  3          uname      => 'TEST01'
+  4        , orig_table => 'TAB_REDEFINE'
+  5        , int_table  => 'TAB_REDEFINE_NEW'
+  6      );
+  7* end;
+SQL> /
+
+PL/SQL procedure successfully completed.
+
+Elapsed: 00:00:00.10
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  select 'TAB_REDEFINE' tname, count(*) from TAB_REDEFINE union all
+  2* select 'TAB_REDEFINE_NEW' tname, count(*) from TAB_REDEFINE_NEW
+SQL> /
+
+TNAME              COUNT(*)
+---------------- ----------
+TAB_REDEFINE          10000
+TAB_REDEFINE_NEW      10000
+
+2 rows selected.
+
+Elapsed: 00:00:00.01
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  begin
+  2      dbms_redefinition.finish_redef_table (
+  3          uname      => 'TEST01'
+  4        , orig_table => 'TAB_REDEFINE'
+  5        , int_table  => 'TAB_REDEFINE_NEW'
+  6      );
+  7* end;
+SQL> /
+
+PL/SQL procedure successfully completed.
+
+Elapsed: 00:00:00.70
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  select log_owner
+  2       , master
+  3       , log_table
+  4       , object_id
+  5       , last_purge_date
+  6       , last_purge_status
+  7       , num_rows_purged
+  8*   from user_mview_logs
+SQL> /
+
+LOG_OWNER        MASTER               LOG_TABLE                      OBJECT_ID    LAST_PURGE_DATE     LAST_PURGE_STATUS NUM_ROWS_PURGED
+---------------- -------------------- ------------------------------ ------------ ------------------- ----------------- ---------------
+TEST01           TAB_REDEFINE         MLOG$_TAB_REDEFINE             NO           2017/08/22 11:02:57                 0               0
+TEST01           TAB_REDEFINE_NEW     MLOG$_TAB_REDEFINE_NEW         NO           2017/08/22 11:11:00                 0               0
+
+2 rows selected.
+
+Elapsed: 00:00:00.00
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  select owner
+  2       , mview_name
+  3       , last_refresh_type
+  4       , last_refresh_date
+  5       , compile_state
+  6       , staleness
+  7       , after_fast_refresh
+  8*   from user_mviews
+SQL> /
+
+OWNER                MVIEW_NAME           LAST_REFRESH_TYPE    LAST_REFRESH_DATE   COMPILE_STATE       STALENESS           AFTER_FAST_REFRESH
+-------------------- -------------------- -------------------- ------------------- ------------------- ------------------- -------------------
+TEST01               MV_REDEFINE          COMPLETE             2017/08/22 10:47:27 NEEDS_COMPILE       NEEDS_COMPILE       NEEDS_COMPILE
+
+1 row selected.
+
+Elapsed: 00:00:00.06
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  select object_type
+  2       , object_id
+  3       , object_name
+  4       , last_ddl_time
+  5       , status
+  6    from user_objects
+  7*  order by 1, 3
+SQL> /
+
+OBJECT_TYPE               OBJECT_ID OBJECT_NAME                    LAST_DDL_TIME       STATUS
+----------------------- ----------- ------------------------------ ------------------- -------
+INDEX                         92823 IDX1_REDEFINE                  2017/08/22 10:44:37 VALID
+INDEX                         92845 IDX1_REDEFINE_NEW              2017/08/22 11:02:58 VALID
+INDEX                         92822 IDXP_REDEFIE                   2017/08/22 10:38:52 VALID
+INDEX                         92836 IDXP_REDEFINE_NEW              2017/08/22 11:02:58 VALID
+INDEX                         92829 I_MLOG$_TAB_REDEFINE           2017/08/22 10:46:20 VALID
+INDEX                         92843 I_MLOG$_TAB_REDEFINE_NEW       2017/08/22 11:02:10 VALID
+INDEX PARTITION               92846 IDX1_REDEFINE_NEW              2017/08/22 11:02:58 VALID
+INDEX PARTITION               92848 IDX1_REDEFINE_NEW              2017/08/22 11:02:58 VALID
+INDEX PARTITION               92847 IDX1_REDEFINE_NEW              2017/08/22 11:02:58 VALID
+MATERIALIZED VIEW             92831 MV_REDEFINE                    2017/08/22 10:47:27 INVALID
+TABLE                         92841 MLOG$_TAB_REDEFINE             2017/08/22 10:46:20 VALID
+TABLE                         92827 MLOG$_TAB_REDEFINE_NEW         2017/08/22 11:11:00 VALID
+TABLE                         92830 MV_REDEFINE                    2017/08/22 10:47:27 VALID
+TABLE                         92828 RUPD$_TAB_REDEFINE             2017/08/22 10:46:20 VALID
+TABLE                         92842 RUPD$_TAB_REDEFINE_NEW         2017/08/22 11:02:10 VALID
+TABLE                         92832 TAB_REDEFINE                   2017/08/22 11:11:00 VALID
+TABLE                         92821 TAB_REDEFINE_NEW               2017/08/22 11:11:00 VALID
+TABLE PARTITION               92833 TAB_REDEFINE                   2017/08/22 10:58:46 VALID
+TABLE PARTITION               92834 TAB_REDEFINE                   2017/08/22 10:58:46 VALID
+TABLE PARTITION               92835 TAB_REDEFINE                   2017/08/22 10:58:46 VALID
+
+20 rows selected.
+
+Elapsed: 00:00:00.03
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1* alter materialized view mv_redefine compile
+SQL> /
+
+Materialized view altered.
+
+Elapsed: 00:00:00.22
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  select log_owner
+  2       , master
+  3       , log_table
+  4       , object_id
+  5       , last_purge_date
+  6       , last_purge_status
+  7       , num_rows_purged
+  8*   from user_mview_logs
+SQL> /
+
+LOG_OWNER        MASTER               LOG_TABLE                      OBJ LAST_PURGE_DATE     LAST_PURGE_STATUS NUM_ROWS_PURGED
+---------------- -------------------- ------------------------------ --- ------------------- ----------------- ---------------
+TEST01           TAB_REDEFINE         MLOG$_TAB_REDEFINE             NO  2017/08/22 11:02:57                 0               0
+TEST01           TAB_REDEFINE_NEW     MLOG$_TAB_REDEFINE_NEW         NO  2017/08/22 11:11:00                 0               0
+
+2 rows selected.
+
+Elapsed: 00:00:00.01
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  select owner
+  2       , mview_name
+  3       , last_refresh_type
+  4       , last_refresh_date
+  5       , compile_state
+  6       , staleness
+  7       , after_fast_refresh
+  8*   from user_mviews
+SQL> /
+
+OWNER                MVIEW_NAME           LAST_REFRESH_TYPE    LAST_REFRESH_DATE   COMPILE_STATE       STALENESS           AFTER_FAST_REFRESH
+-------------------- -------------------- -------------------- ------------------- ------------------- ------------------- -------------------
+TEST01               MV_REDEFINE          COMPLETE             2017/08/22 10:47:27 VALID               UNUSABLE            NA
+
+1 row selected.
+
+Elapsed: 00:00:00.04
+SQL> 
+SQL> 
+SQL> execute dbms_mview.refresh( 'mv_redefine', 'f' );
+BEGIN dbms_mview.refresh( 'mv_redefine', 'f' ); END;
+
+*
+ERROR at line 1:
+ORA-12034: materialized view log on "TEST01"."TAB_REDEFINE" younger than last refresh
+ORA-06512: at "SYS.DBMS_SNAPSHOT", line 2821
+ORA-06512: at "SYS.DBMS_SNAPSHOT", line 3058
+ORA-06512: at "SYS.DBMS_SNAPSHOT", line 3017
+ORA-06512: at line 1
+
+
+Elapsed: 00:00:00.27
+SQL> 
+SQL> 
+SQL> execute dbms_mview.refresh( 'mv_redefine', 'c' );
+
+PL/SQL procedure successfully completed.
+
+Elapsed: 00:00:00.29
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  select owner
+  2       , mview_name
+  3       , last_refresh_type
+  4       , last_refresh_date
+  5       , compile_state
+  6       , staleness
+  7       , after_fast_refresh
+  8*   from user_mviews
+SQL> /
+
+OWNER                MVIEW_NAME           LAST_REFRESH_TYPE    LAST_REFRESH_DATE   COMPILE_STATE       STALENESS           AFTER_FAST_REFRESH
+-------------------- -------------------- -------------------- ------------------- ------------------- ------------------- -------------------
+TEST01               MV_REDEFINE          COMPLETE             2017/08/22 11:17:42 VALID               FRESH               FRESH
+
+1 row selected.
+
+Elapsed: 00:00:00.04
+SQL> 
+SQL> 
+SQL> execute dbms_mview.refresh( 'mv_redefine', 'f' );
+
+PL/SQL procedure successfully completed.
+
+Elapsed: 00:00:00.07
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  select owner
+  2       , mview_name
+  3       , last_refresh_type
+  4       , last_refresh_date
+  5       , compile_state
+  6       , staleness
+  7       , after_fast_refresh
+  8*   from user_mviews
+SQL> /
+
+OWNER                MVIEW_NAME           LAST_REFRESH_TYPE    LAST_REFRESH_DATE   COMPILE_STATE       STALENESS           AFTER_FAST_REFRESH
+-------------------- -------------------- -------------------- ------------------- ------------------- ------------------- -------------------
+TEST01               MV_REDEFINE          FAST                 2017/08/22 11:18:17 VALID               FRESH               FRESH
+
+1 row selected.
+
+Elapsed: 00:00:00.00
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  select object_type
+  2       , object_id
+  3       , object_name
+  4       , last_ddl_time
+  5       , status
+  6    from user_objects
+  7*  order by 1, 3
+SQL> /
+
+OBJECT_TYPE               OBJECT_ID OBJECT_NAME                    LAST_DDL_TIME       STATUS
+----------------------- ----------- ------------------------------ ------------------- -------
+INDEX                         92823 IDX1_REDEFINE                  2017/08/22 10:44:37 VALID
+INDEX                         92845 IDX1_REDEFINE_NEW              2017/08/22 11:02:58 VALID
+INDEX                         92822 IDXP_REDEFIE                   2017/08/22 10:38:52 VALID
+INDEX                         92836 IDXP_REDEFINE_NEW              2017/08/22 11:02:58 VALID
+INDEX                         92829 I_MLOG$_TAB_REDEFINE           2017/08/22 10:46:20 VALID
+INDEX                         92843 I_MLOG$_TAB_REDEFINE_NEW       2017/08/22 11:02:10 VALID
+INDEX PARTITION               92846 IDX1_REDEFINE_NEW              2017/08/22 11:02:58 VALID
+INDEX PARTITION               92847 IDX1_REDEFINE_NEW              2017/08/22 11:02:58 VALID
+INDEX PARTITION               92848 IDX1_REDEFINE_NEW              2017/08/22 11:02:58 VALID
+MATERIALIZED VIEW             92831 MV_REDEFINE                    2017/08/22 11:15:17 VALID
+TABLE                         92841 MLOG$_TAB_REDEFINE             2017/08/22 10:46:20 VALID
+TABLE                         92827 MLOG$_TAB_REDEFINE_NEW         2017/08/22 11:11:00 VALID
+TABLE                         92830 MV_REDEFINE                    2017/08/22 10:47:27 VALID
+TABLE                         92828 RUPD$_TAB_REDEFINE             2017/08/22 10:46:20 VALID
+TABLE                         92842 RUPD$_TAB_REDEFINE_NEW         2017/08/22 11:02:10 VALID
+TABLE                         92832 TAB_REDEFINE                   2017/08/22 11:11:00 VALID
+TABLE                         92821 TAB_REDEFINE_NEW               2017/08/22 11:11:00 VALID
+TABLE PARTITION               92835 TAB_REDEFINE                   2017/08/22 10:58:46 VALID
+TABLE PARTITION               92834 TAB_REDEFINE                   2017/08/22 10:58:46 VALID
+TABLE PARTITION               92833 TAB_REDEFINE                   2017/08/22 10:58:46 VALID
+
+20 rows selected.
+
+Elapsed: 00:00:00.03
+SQL> 
+SQL> 
+SQL> drop table tab_redefine_new cascade constraint purge;
+
+Table dropped.
+
+Elapsed: 00:00:00.33
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  select object_type
+  2       , object_id
+  3       , object_name
+  4       , last_ddl_time
+  5       , status
+  6    from user_objects
+  7*  order by 1, 3
+SQL> /
+
+OBJECT_TYPE               OBJECT_ID OBJECT_NAME                    LAST_DDL_TIME       STATUS
+----------------------- ----------- ------------------------------ ------------------- -------
+INDEX                         92845 IDX1_REDEFINE_NEW              2017/08/22 11:02:58 VALID
+INDEX                         92836 IDXP_REDEFINE_NEW              2017/08/22 11:02:58 VALID
+INDEX                         92843 I_MLOG$_TAB_REDEFINE_NEW       2017/08/22 11:02:10 VALID
+INDEX PARTITION               92848 IDX1_REDEFINE_NEW              2017/08/22 11:02:58 VALID
+INDEX PARTITION               92847 IDX1_REDEFINE_NEW              2017/08/22 11:02:58 VALID
+INDEX PARTITION               92846 IDX1_REDEFINE_NEW              2017/08/22 11:02:58 VALID
+MATERIALIZED VIEW             92831 MV_REDEFINE                    2017/08/22 11:15:17 VALID
+TABLE                         92841 MLOG$_TAB_REDEFINE             2017/08/22 10:46:20 VALID
+TABLE                         92830 MV_REDEFINE                    2017/08/22 10:47:27 VALID
+TABLE                         92842 RUPD$_TAB_REDEFINE_NEW         2017/08/22 11:02:10 VALID
+TABLE                         92832 TAB_REDEFINE                   2017/08/22 11:11:00 VALID
+TABLE PARTITION               92833 TAB_REDEFINE                   2017/08/22 10:58:46 VALID
+TABLE PARTITION               92834 TAB_REDEFINE                   2017/08/22 10:58:46 VALID
+TABLE PARTITION               92835 TAB_REDEFINE                   2017/08/22 10:58:46 VALID
+
+14 rows selected.
+
+Elapsed: 00:00:00.01
+SQL> 
+SQL> 
+SQL> alter index idxp_redefine_new rename to idxp_redefine;
+
+Index altered.
+
+Elapsed: 00:00:00.03
+SQL> 
+SQL> 
+SQL> alter index idx1_redefine_new rename to idx1_redefine;
+
+Index altered.
+
+Elapsed: 00:00:00.01
+SQL> 
+SQL> 
+SQL> alter index i_mlog$_tab_redefine_new rename to i_mlog$_tab_redefine;
+
+Index altered.
+
+Elapsed: 00:00:00.01
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  select object_type
+  2       , object_id
+  3       , object_name
+  4       , last_ddl_time
+  5       , status
+  6    from user_objects
+  7*  order by 1, 3
+SQL> /
+
+OBJECT_TYPE               OBJECT_ID OBJECT_NAME                    LAST_DDL_TIME       STATUS
+----------------------- ----------- ------------------------------ ------------------- -------
+INDEX                         92845 IDX1_REDEFINE                  2017/08/22 11:25:57 VALID
+INDEX                         92836 IDXP_REDEFINE                  2017/08/22 11:25:49 VALID
+INDEX                         92843 I_MLOG$_TAB_REDEFINE           2017/08/22 11:26:06 VALID
+INDEX PARTITION               92846 IDX1_REDEFINE                  2017/08/22 11:02:58 VALID
+INDEX PARTITION               92847 IDX1_REDEFINE                  2017/08/22 11:02:58 VALID
+INDEX PARTITION               92848 IDX1_REDEFINE                  2017/08/22 11:02:58 VALID
+MATERIALIZED VIEW             92831 MV_REDEFINE                    2017/08/22 11:15:17 VALID
+TABLE                         92841 MLOG$_TAB_REDEFINE             2017/08/22 10:46:20 VALID
+TABLE                         92830 MV_REDEFINE                    2017/08/22 10:47:27 VALID
+TABLE                         92842 RUPD$_TAB_REDEFINE_NEW         2017/08/22 11:02:10 VALID
+TABLE                         92832 TAB_REDEFINE                   2017/08/22 11:11:00 VALID
+TABLE PARTITION               92833 TAB_REDEFINE                   2017/08/22 10:58:46 VALID
+TABLE PARTITION               92834 TAB_REDEFINE                   2017/08/22 10:58:46 VALID
+TABLE PARTITION               92835 TAB_REDEFINE                   2017/08/22 10:58:46 VALID
+
+14 rows selected.
+
+Elapsed: 00:00:00.02
+SQL> 
+SQL> 
+SQL> ed
+Wrote file afiedt.buf
+
+  1  select idx.index_name
+  2       , idx.uniqueness
+  3       , col.column_name
+  4       , idx.last_analyzed
+  5       , idx.degree
+  6       , idx.visibility
+  7       , idx.partitioned
+  8       , idx.status
+  9    from user_indexes idx
+ 10   inner join user_ind_columns col
+ 11      on col.table_name = idx.table_name
+ 12     and col.index_name = idx.index_name
+ 13   where idx.table_name = 'TAB_REDEFINE'
+ 14   order by
+ 15         idx.index_name
+ 16*      , col.column_position
+SQL> /
+
+INDEX_NAME                     UNIQUENES COLUMN_NAME          LAST_ANALYZED       DEGREE   VISIBILITY PARTITIONED  STATUS
+------------------------------ --------- -------------------- ------------------- -------- ---------- ------------ --------
+IDX1_REDEFINE                  NONUNIQUE STATUS               2017/08/22 11:06:48 1        VISIBLE    YES          N/A
+IDXP_REDEFINE                  UNIQUE    TID                  2017/08/22 11:06:48 DEFAULT  VISIBLE    NO           VALID
+
+2 rows selected.
+
+Elapsed: 00:00:00.15
+SQL> 
+SQL> 
+SQL> @uobj
+Enter value for owner: test01
+
+OBJECT_TYPE             OBJECT_NAME                      OBJECT_ID CREATED             LAST_DDL_TIME
+----------------------- ------------------------------ ----------- ------------------- -------------------
+INDEX                   IDX1_REDEFINE                        92845 2017/08/22 11:02:58 2017/08/22 11:25:57
+INDEX                   IDXP_REDEFINE                        92836 2017/08/22 10:59:45 2017/08/22 11:25:49
+INDEX                   I_MLOG$_TAB_REDEFINE                 92843 2017/08/22 11:02:10 2017/08/22 11:26:06
+MATERIALIZED VIEW       MV_REDEFINE                          92831 2017/08/22 10:47:27 2017/08/22 11:15:17
+TABLE                   MLOG$_TAB_REDEFINE                   92841 2017/08/22 11:02:10 2017/08/22 10:46:20
+TABLE                   MV_REDEFINE                          92830 2017/08/22 10:47:27 2017/08/22 10:47:27
+TABLE                   RUPD$_TAB_REDEFINE_NEW               92842 2017/08/22 11:02:10 2017/08/22 11:02:10
+TABLE                   TAB_REDEFINE                         92832 2017/08/22 10:58:46 2017/08/22 11:11:00
+
+8 rows selected.
+
+Elapsed: 00:00:00.25
+SQL> 
+SQL> 
+SQL> spool off
