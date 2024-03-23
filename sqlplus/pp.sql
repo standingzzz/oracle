@@ -8,7 +8,7 @@ select sys_context('userenv', 'CURRENT_SCHEMA') current_schema
      , sys_context('userenv', 'INSTANCE_NAME') instance_name
   from dual
 ;
-set sqlpromt '&current_schema@&instance_name(&host)>'
+set sqlprompt '&current_schema@&instance_name(&host)>'
 set head on
 @nlsdate
 set term on
